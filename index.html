@@ -46,7 +46,7 @@
     const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec"; // Make sure this ends in /exec
 
 async function sendRequest(params) {
-  // Convert object payload to URL parameters
+  // Convert JS object into URL Query Parameters (e.g., ?action=createColumn&dateStr=28/07/26)
   const query = new URLSearchParams(params).toString();
   const fullUrl = `${API_URL}?${query}`;
 
@@ -54,7 +54,7 @@ async function sendRequest(params) {
     method: "GET",
     redirect: "follow"
   });
-  
+
   return await response.json();
 }
 
