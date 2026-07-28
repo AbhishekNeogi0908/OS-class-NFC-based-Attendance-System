@@ -1,16 +1,13 @@
 /**
  * Admin Authentication & Session Management Module
- * NFC Attendance Station
  */
 
-// Authorized Admins Credentials Object (Add or remove admins here)
 const AUTHORIZED_ADMINS = {
   "abhishek": "iitg2026",
   "pankaj": "nfc2026",
   "admin": "pass1234"
 };
 
-// Run session check and pre-fill date on page load
 document.addEventListener("DOMContentLoaded", function () {
   const dateInput = document.getElementById("dateInput");
   if (dateInput && !dateInput.value) {
@@ -24,10 +21,6 @@ document.addEventListener("DOMContentLoaded", function () {
   checkAdminSession();
 });
 
-/**
- * Verifies admin credentials, initializes session state,
- * and calls Apps Script to create the date column in the target sheet.
- */
 async function verifyAndStartClass() {
   const adminIDInput = document.getElementById("adminID");
   const adminPassInput = document.getElementById("adminPasscode");
@@ -47,7 +40,6 @@ async function verifyAndStartClass() {
     return;
   }
 
-  // Validate admin login credentials
   if (AUTHORIZED_ADMINS[adminID] && AUTHORIZED_ADMINS[adminID] === pass) {
     sessionStorage.setItem("adminLoggedIn", "true");
     sessionStorage.setItem("activeAdminID", adminID);
@@ -56,11 +48,9 @@ async function verifyAndStartClass() {
 
     if (errorDiv) errorDiv.innerText = "Creating column in Sheet...";
 
-    // Set global variables used in index.html
     window.activeDate = dateStr;
     window.activeCourse = selectedCourse;
 
-    // Dispatch column creation request to Apps Script
     if (typeof sendRequest === "function") {
       await sendRequest({ action: "createColumn", dateStr: dateStr });
     }
@@ -74,17 +64,43 @@ async function verifyAndStartClass() {
   }
 }
 
-/**
- * Validates password only (used for the "Mark Absentees" admin prompt)
- */
-function validatePasswordOnly(adminID, pass) {
-  if (!adminID || !pass) return false;
-  return AUTHORIZED_ADMINS[adminID.toLowerCase()] === pass.trim();
+// Open custom masked password modal
+function openEndClassModal() {
+  const modal = document.getElementById("endClassModal");
+  const passInput = document.getElementById("endClassPasscode");
+  const errDiv = document.getElementById("modalError");
+
+  if (passInput) passInput.value = "";
+  if (errDiv) errDiv.innerText = "";
+  if (modal) modal.style.display = "flex";
 }
 
-/**
- * Checks session storage on page load/refresh
- */
+// Close password modal
+function closeEndClassModal() {
+  const modal = document.getElementById("endClassModal");
+  if (modal) modal.style.display = "none";
+}
+
+// Confirm masked password & mark absentees
+async function confirmAndEndClass() {
+  const activeAdminID = sessionStorage.getItem("activeAdminID");
+  const passInput = document.getElementById("endClassPasscode");
+  const errDiv = document.getElementById("modalError");
+
+  if (!passInput) return;
+  const enteredPass = passInput.value.trim();
+
+  if (AUTHORIZED_ADMINS[activeAdminID.toLowerCase()] === enteredPass) {
+    closeEndClassModal();
+    document.getElementById('statusMsg').innerText = "Marking absentees...";
+    await sendRequest({ action: "markAbsentees", dateStr: activeDate });
+    alert(`Absentees marked for ${activeDate} in "${activeCourse}" tab! Class session ended.`);
+    logoutAdmin();
+  } else {
+    if (errDiv) errDiv.innerText = "❌ Incorrect Password!";
+  }
+}
+
 function checkAdminSession() {
   const isLoggedIn = sessionStorage.getItem("adminLoggedIn") === "true";
   if (isLoggedIn) {
@@ -96,9 +112,6 @@ function checkAdminSession() {
   }
 }
 
-/**
- * Unlocks the main scanning dashboard and updates session details
- */
 function showDashboard() {
   const loginCard = document.getElementById("loginCard");
   const mainDashboard = document.getElementById("mainDashboard");
@@ -118,9 +131,6 @@ function showDashboard() {
   }
 }
 
-/**
- * Hides main station UI and presents the login card
- */
 function hideDashboard() {
   const loginCard = document.getElementById("loginCard");
   const mainDashboard = document.getElementById("mainDashboard");
@@ -129,9 +139,6 @@ function hideDashboard() {
   if (mainDashboard) mainDashboard.style.display = "none";
 }
 
-/**
- * Clears session tokens and logs out the current admin
- */
 function logoutAdmin() {
   sessionStorage.removeItem("adminLoggedIn");
   sessionStorage.removeItem("activeAdminID");

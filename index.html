@@ -16,6 +16,10 @@
     .log-box { background: #222; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; height: 180px; overflow-y: auto; text-align: left; }
     .admin-badge { background: #e2e3e5; color: #383d41; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; display: inline-block; margin-bottom: 10px; }
     label { font-weight: bold; display: block; margin-top: 10px; text-align: left; margin-left: 7.5%; }
+
+    /* Modal Styling for Masked Password Input */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
+    .modal-content { background: white; padding: 25px; border-radius: 12px; max-width: 350px; width: 90%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
   </style>
 </head>
 <body>
@@ -57,7 +61,19 @@
       <div class="status" id="statusMsg">Ready to scan...</div>
       <div class="log-box" id="logBox">-- Live Scan Log --<br></div>
       
-      <button class="btn-danger" onclick="finishClassWithAuth()" style="margin-top: 20px;">Mark Absentees ("A") & End Class</button>
+      <button class="btn-danger" onclick="openEndClassModal()" style="margin-top: 20px;">Mark Absentees ("A") & End Class</button>
+    </div>
+  </div>
+
+  <!-- 3. MASKED PASSWORD MODAL FOR ENDING CLASS -->
+  <div class="modal-overlay" id="endClassModal">
+    <div class="modal-content">
+      <h3 style="margin-top: 0;">🔒 Confirm Password</h3>
+      <p style="font-size: 13px; color: #555;">Enter Admin Password to mark absentees ("A") and finish class:</p>
+      <input type="password" id="endClassPasscode" placeholder="Enter Password" style="width: 100%;" /><br>
+      <div id="modalError" style="color: red; font-size: 13px; margin-top: 8px; font-weight: bold;"></div>
+      <button class="btn-danger" onclick="confirmAndEndClass()">Confirm & End Class</button>
+      <button class="btn-secondary" onclick="closeEndClassModal()" style="width: 100%;">Cancel</button>
     </div>
   </div>
 
@@ -148,22 +164,6 @@
 
       } catch (error) {
         alert("NFC Initialization Error: " + error);
-      }
-    }
-
-    async function finishClassWithAuth() {
-      const activeAdminID = sessionStorage.getItem("activeAdminID");
-      const enteredPass = prompt(`Admin Confirmation Required (${activeAdminID}):\nPlease enter your password to mark absentees ("A") and end class:`);
-
-      if (enteredPass === null) return;
-
-      if (typeof validatePasswordOnly === "function" && validatePasswordOnly(activeAdminID, enteredPass)) {
-        document.getElementById('statusMsg').innerText = "Marking absentees...";
-        await sendRequest({ action: "markAbsentees", dateStr: activeDate });
-        alert(`Absentees marked for ${activeDate} in "${activeCourse}" tab! Class session ended.`);
-        logoutAdmin();
-      } else {
-        alert("❌ Incorrect Password! Cannot end class session.");
       }
     }
 
