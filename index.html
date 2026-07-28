@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NFC Attendance Station</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 15px; text-align: center; background: #f4f6f9; }
+    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 15px; }
+    button { width: 100%; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 8px; border: none; margin-top: 10px; cursor: pointer; }
+    .btn-primary { background: #007bff; color: white; }
+    .btn-danger { background: #dc3545; color: white; }
+    .status { margin-top: 15px; font-size: 18px; font-weight: bold; min-height: 40px; }
+    .log-box { background: #222; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; height: 180px; overflow-y: auto; text-align: left; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>NFC Attendance Station</h2>
+    <label><b>Class Date:</b></label>
+    <input type="text" id="dateInput" style="padding: 8px; font-size: 16px; width: 60%; text-align: center;" />
+    <button class="btn-primary" id="startBtn" onclick="startClass()">Start Class (Create Column)</button>
+    <div id="initStatus" style="margin-top:10px; color:#555;"></div>
+  </div>
+
+  <div class="card" id="scanSection" style="display:none;">
+    <button class="btn-primary" id="nfcBtn" onclick="initNFC()">📡 Tap ID Cards to Scan</button>
+    <div class="status" id="statusMsg">Ready to scan...</div>
+    <div class="log-box" id="logBox">-- Live Scan Log --<br></div>
+    <button class="btn-danger" onclick="finishClass()" style="margin-top: 20px;">Mark Absentees ("A") & End Class</button>
+  </div>
+
+  <script>
+    // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
+    const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec";
+
+    var today = new Date();
+    var dd = String(today.getDate()).padStart(2, '0');
+    var mm = String(today.getMonth() + 1).padStart(2, '0');
+    var yy = String(today.getFullYear()).slice(-2);
+    document.getElementById('dateInput').value = `${dd}/${mm}/${yy}`;
+
+    var activeDate = "";
+
+    async function sendRequest(payload) {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      return await response.json();
+    }
+
+    async function startClass() {
+      activeDate = document.getElementById('dateInput').value.trim();
+      if (!activeDate) return alert("Enter date");
+      
+      var status = document.getElementById('initStatus');
+      status.innerText = "Creating column in Sheet...";
+
+      try {
+        const res = await sendRequest({ action: "createColumn", dateStr: activeDate });
+        document.getElementById('scanSection').style.display = 'block';
+        document.getElementById('statusMsg').innerText = `Class active for ${activeDate}! Start scanning.`;
+        status.innerText = res.status === "EXISTS" ? "Column already exists." : "New column created!";
+      } catch (e) {
+        alert("API Error: " + e.message);
+      }
+    }
+
+    async function initNFC() {
+      if (!('NDEFReader' in window)) {
+        alert("Web NFC is only supported in Chrome on Android natively!");
+        return;
+      }
+
+      try {
+        const ndef = new NDEFReader();
+        await ndef.scan(); // This works now because the page is loaded at top-level!
+        document.getElementById('nfcBtn').innerText = "🟢 Scanning Active...";
+        document.getElementById('nfcBtn').style.background = "#28a745";
+
+        ndef.addEventListener("reading", async ({ serialNumber }) => {
+          logToBox(`Scanned UID: ${serialNumber}`);
+          
+          try {
+            const res = await sendRequest({ action: "markPresent", uid: serialNumber, dateStr: activeDate });
+            if (res.status === "SUCCESS") {
+              document.getElementById('statusMsg').innerText = `✅ Marked: ${res.name} (${res.branch})`;
+              document.getElementById('statusMsg').style.color = "green";
+              logToBox(`--> Present: ${res.roll} | ${res.name} [${res.branch}]`);
+            } else {
+              document.getElementById('statusMsg').innerText = `❌ UID Not Registered: ${serialNumber}`;
+              document.getElementById('statusMsg').style.color = "red";
+            }
+          } catch(e) {
+            logToBox(`--> Error marking attendance: ${e.message}`);
+          }
+        });
+
+      } catch (error) {
+        alert("NFC Initialization Error: " + error);
+      }
+    }
+
+    async function finishClass() {
+      if (!confirm(`Mark all remaining empty cells for ${activeDate} as "A"?`)) return;
+
+      document.getElementById('statusMsg').innerText = "Marking absentees...";
+      try {
+        const res = await sendRequest({ action: "markAbsentees", dateStr: activeDate });
+        alert(`Finished! ${res.absenteesMarked} students marked as Absent ("A").`);
+        document.getElementById('statusMsg').innerText = "Class ended.";
+      } catch(e) {
+        alert("Error: " + e.message);
+      }
+    }
+
+    function logToBox(msg) {
+      var box = document.getElementById('logBox');
+      box.innerHTML += msg + "<br>";
+      box.scrollTop = box.scrollHeight;
+    }
+  </script>
+</body>
+</html>
