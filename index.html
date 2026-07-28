@@ -3,6 +3,11 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NFC Attendance Station</title>
+
+  <!-- Mobile On-Screen Debug Console -->
+  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+
   <style>
     body { font-family: Arial, sans-serif; padding: 15px; text-align: center; background: #f4f6f9; }
     .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 15px; }
@@ -31,10 +36,9 @@
   </div>
 
   <script>
-    // Single global definition of API_URL
     const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec";
 
-    // Set today's date in DD/MM/YY format
+    // Format pre-filled date as DD/MM/YY
     var today = new Date();
     var dd = String(today.getDate()).padStart(2, '0');
     var mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -43,65 +47,37 @@
 
     var activeDate = "";
 
-    // JSONP Network Request (bypasses CORS restrictions)
-function sendRequest(params) {
-  return new Promise((resolve) => {
-    // 1. Create a unique hidden iframe to catch the response
-    const iframeName = 'hidden_iframe_' + Math.round(100000 * Math.random());
-    const iframe = document.createElement('iframe');
-    iframe.name = iframeName;
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
+    // Universal Mobile API Dispatcher using XMLHttpRequest
+    function sendRequest(params) {
+      return new Promise((resolve, reject) => {
+        const query = new URLSearchParams(params).toString();
+        const targetUrl = `${API_URL}?${query}`;
+        
+        console.log("Mobile Requesting:", targetUrl);
 
-    // 2. Create a hidden form pointing to Apps Script
-    const form = document.createElement('form');
-    form.target = iframeName;
-    form.action = API_URL;
-    form.method = 'GET';
-    form.style.display = 'none';
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", targetUrl, true);
+        
+        xhr.onload = function () {
+          console.log("XHR Status:", xhr.status);
+          console.log("XHR Response:", xhr.responseText);
+          try {
+            const data = JSON.parse(xhr.responseText);
+            resolve(data);
+          } catch (e) {
+            // Handle plain string or redirect response
+            resolve({ status: "SUCCESS", raw: xhr.responseText });
+          }
+        };
 
-    // 3. Attach parameter inputs
-    for (const key in params) {
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = key;
-      input.value = params[key];
-      form.appendChild(input);
+        xhr.onerror = function (err) {
+          console.error("XHR Error Event:", err);
+          reject(new Error("Mobile Request Blocked / Network Error"));
+        };
+
+        xhr.send();
+      });
     }
-
-    document.body.appendChild(form);
-
-    // 4. Submit form (bypasses browser fetch/JSONP restrictions completely)
-    form.submit();
-
-    // 5. Cleanup after submission delay
-    setTimeout(() => {
-      document.body.removeChild(form);
-      document.body.removeChild(iframe);
-      // Resolve as successful submit trigger
-      resolve({ status: "SUCCESS" });
-    }, 1500);
-  });
-}
-
-    window[callbackName] = function(data) {
-      cleanup();
-      resolve(data);
-    };
-
-    params.callback = callbackName;
-    const query = new URLSearchParams(params).toString();
-    const script = document.createElement('script');
-    
-    script.src = `${API_URL}?${query}`;
-    script.onerror = function(err) {
-      cleanup();
-      reject(new Error("Network blocked or failed to load script. Check network/VPN/AdBlock settings."));
-    };
-
-    document.body.appendChild(script);
-  });
-}
 
     async function startClass() {
       activeDate = document.getElementById('dateInput').value.trim();
@@ -116,13 +92,13 @@ function sendRequest(params) {
         document.getElementById('statusMsg').innerText = `Class active for ${activeDate}! Start scanning.`;
         status.innerText = res.status === "EXISTS" ? "Column already exists." : "New column created!";
       } catch (e) {
-        alert("API Error: " + e.message);
+        alert("API Error: " + e.message + " (Check Eruda Console)");
       }
     }
 
     async function initNFC() {
       if (!('NDEFReader' in window)) {
-        alert("Web NFC is only supported in Chrome on Android natively!");
+        alert("Web NFC is only supported natively in Chrome on Android!");
         return;
       }
 
@@ -138,9 +114,9 @@ function sendRequest(params) {
           try {
             const res = await sendRequest({ action: "markPresent", uid: serialNumber, dateStr: activeDate });
             if (res.status === "SUCCESS") {
-              document.getElementById('statusMsg').innerText = `✅ Marked: ${res.name} (${res.branch})`;
+              document.getElementById('statusMsg').innerText = `✅ Marked: ${res.name || 'Present'}`;
               document.getElementById('statusMsg').style.color = "green";
-              logToBox(`--> Present: ${res.roll} | ${res.name} [${res.branch}]`);
+              logToBox(`--> Present: ${res.roll || ''} | ${res.name || ''} [${res.branch || ''}]`);
             } else {
               document.getElementById('statusMsg').innerText = `❌ UID Not Registered: ${serialNumber}`;
               document.getElementById('statusMsg').style.color = "red";
@@ -151,7 +127,7 @@ function sendRequest(params) {
         });
 
       } catch (error) {
-        alert("NFC Initialization Error: " + error);
+        alert("NFC Error: " + error);
       }
     }
 
@@ -161,7 +137,7 @@ function sendRequest(params) {
       document.getElementById('statusMsg').innerText = "Marking absentees...";
       try {
         const res = await sendRequest({ action: "markAbsentees", dateStr: activeDate });
-        alert(`Finished! ${res.absenteesMarked} students marked as Absent ("A").`);
+        alert(`Finished marking absentees!`);
         document.getElementById('statusMsg').innerText = "Class ended.";
       } catch(e) {
         alert("Error: " + e.message);
