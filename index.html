@@ -8,6 +8,7 @@
     .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 15px; }
     button { width: 100%; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 8px; border: none; margin-top: 10px; cursor: pointer; }
     .btn-primary { background: #007bff; color: white; }
+    .btn-success { background: #28a745; color: white; text-decoration: none; display: block; padding: 12px; border-radius: 8px; font-weight: bold; margin-top: 10px; }
     .btn-danger { background: #dc3545; color: white; }
     .status { margin-top: 15px; font-size: 18px; font-weight: bold; min-height: 40px; }
     .log-box { background: #222; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; height: 180px; overflow-y: auto; text-align: left; }
@@ -20,6 +21,10 @@
     <label><b>Class Date:</b></label>
     <input type="text" id="dateInput" style="padding: 8px; font-size: 16px; width: 60%; text-align: center;" />
     <button class="btn-primary" id="startBtn" onclick="startClass()">Start Class (Create Column)</button>
+    
+    <!-- DIRECT LINK TO VIEW GOOGLE SHEET -->
+    <a href="https://docs.google.com/spreadsheets" target="_blank" class="btn-success">📊 Open Attendance Google Sheet</a>
+    
     <div id="initStatus" style="margin-top:10px; color:#555;"></div>
   </div>
 
@@ -33,7 +38,7 @@
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec";
 
-    // Pre-fill today's date (DD/MM/YY)
+    // Set today's date in DD/MM/YY format
     var today = new Date();
     var dd = String(today.getDate()).padStart(2, '0');
     var mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -42,37 +47,29 @@
 
     var activeDate = "";
 
-    // Form-based background submit (bypasses browser XHR/fetch/CORS security blocks completely)
+    // Reliable JSONP Loader (Works cross-origin on mobile and desktop)
     function sendRequest(params) {
-      return new Promise((resolve) => {
-        const iframeName = 'hidden_iframe_' + Math.round(100000 * Math.random());
-        const iframe = document.createElement('iframe');
-        iframe.name = iframeName;
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
+      return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
 
-        const form = document.createElement('form');
-        form.target = iframeName;
-        form.action = API_URL;
-        form.method = 'GET';
-        form.style.display = 'none';
+        window[callbackName] = function(data) {
+          delete window[callbackName];
+          if (document.body.contains(script)) document.body.removeChild(script);
+          resolve(data);
+        };
 
-        for (const key in params) {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = key;
-          input.value = params[key];
-          form.appendChild(input);
-        }
+        params.callback = callbackName;
+        const query = new URLSearchParams(params).toString();
+        const script = document.createElement('script');
+        
+        script.src = `${API_URL}?${query}`;
+        script.onerror = function() {
+          delete window[callbackName];
+          if (document.body.contains(script)) document.body.removeChild(script);
+          reject(new Error("Request failed to reach Google Sheet API"));
+        };
 
-        document.body.appendChild(form);
-        form.submit();
-
-        setTimeout(() => {
-          if (document.body.contains(form)) document.body.removeChild(form);
-          if (document.body.contains(iframe)) document.body.removeChild(iframe);
-          resolve({ status: "SUCCESS" });
-        }, 1200);
+        document.body.appendChild(script);
       });
     }
 
@@ -84,10 +81,10 @@
       status.innerText = "Creating column in Sheet...";
 
       try {
-        await sendRequest({ action: "createColumn", dateStr: activeDate });
+        const res = await sendRequest({ action: "createColumn", dateStr: activeDate });
         document.getElementById('scanSection').style.display = 'block';
         document.getElementById('statusMsg').innerText = `Class active for ${activeDate}! Start scanning.`;
-        status.innerText = "Class initialized successfully!";
+        status.innerText = res.status === "EXISTS" ? "Column already exists!" : "New column created in Sheet!";
       } catch (e) {
         alert("API Error: " + e.message);
       }
@@ -109,12 +106,18 @@
           logToBox(`Scanned UID: ${serialNumber}`);
           
           try {
-            await sendRequest({ action: "markPresent", uid: serialNumber, dateStr: activeDate });
-            document.getElementById('statusMsg').innerText = `✅ Card Processed: ${serialNumber}`;
-            document.getElementById('statusMsg').style.color = "green";
-            logToBox(`--> Present marked for UID: ${serialNumber}`);
+            const res = await sendRequest({ action: "markPresent", uid: serialNumber, dateStr: activeDate });
+            if (res.status === "SUCCESS") {
+              document.getElementById('statusMsg').innerText = `✅ Marked Present: ${res.name || serialNumber}`;
+              document.getElementById('statusMsg').style.color = "green";
+              logToBox(`--> Marked "P" for: ${res.roll || ''} ${res.name || serialNumber}`);
+            } else {
+              document.getElementById('statusMsg').innerText = `❌ UID Not Found in Sheet: ${serialNumber}`;
+              document.getElementById('statusMsg').style.color = "red";
+              logToBox(`--> UID not registered in Sheet: ${serialNumber}`);
+            }
           } catch(e) {
-            logToBox(`--> Error marking attendance: ${e.message}`);
+            logToBox(`--> Error updating sheet: ${e.message}`);
           }
         });
 
@@ -128,8 +131,8 @@
 
       document.getElementById('statusMsg').innerText = "Marking absentees...";
       try {
-        await sendRequest({ action: "markAbsentees", dateStr: activeDate });
-        alert(`Finished marking absentees for ${activeDate}!`);
+        const res = await sendRequest({ action: "markAbsentees", dateStr: activeDate });
+        alert(`Finished! ${res.absenteesMarked || 0} students marked as Absent ("A").`);
         document.getElementById('statusMsg').innerText = "Class ended.";
       } catch(e) {
         alert("Error: " + e.message);
