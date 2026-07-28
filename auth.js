@@ -1,12 +1,17 @@
-// Authorized Admins Credentials Object
+/**
+ * Admin Authentication & Session Management Module
+ * NFC Attendance Station
+ */
+
+// Authorized Admins Credentials Object (Add or remove admins here)
 const AUTHORIZED_ADMINS = {
   "abhishek": "iitg2026",
   "pankaj": "nfc2026",
   "admin": "pass1234"
 };
 
+// Run session check and pre-fill date on page load
 document.addEventListener("DOMContentLoaded", function () {
-  // Pre-fill today's date on load
   const dateInput = document.getElementById("dateInput");
   if (dateInput && !dateInput.value) {
     const today = new Date();
@@ -19,7 +24,10 @@ document.addEventListener("DOMContentLoaded", function () {
   checkAdminSession();
 });
 
-// Verifies credentials, initializes the date/course, and creates the column in Google Sheet
+/**
+ * Verifies admin credentials, initializes session state,
+ * and calls Apps Script to create the date column in the target sheet.
+ */
 async function verifyAndStartClass() {
   const adminIDInput = document.getElementById("adminID");
   const adminPassInput = document.getElementById("adminPasscode");
@@ -32,7 +40,7 @@ async function verifyAndStartClass() {
   const adminID = adminIDInput.value.trim().toLowerCase();
   const pass = adminPassInput.value.trim();
   const dateStr = dateInput.value.trim();
-  const selectedCourse = courseSelect ? courseSelect.value : "OS Lab";
+  const selectedCourse = courseSelect ? courseSelect.value : "OS_lab_att";
 
   if (!dateStr) {
     if (errorDiv) errorDiv.innerText = "❌ Please enter a valid class date!";
@@ -48,12 +56,14 @@ async function verifyAndStartClass() {
 
     if (errorDiv) errorDiv.innerText = "Creating column in Sheet...";
 
-    // Set global variables in index.html
+    // Set global variables used in index.html
     window.activeDate = dateStr;
     window.activeCourse = selectedCourse;
 
-    // Send API call to create sheet column
-    await sendRequest({ action: "createColumn", dateStr: dateStr });
+    // Dispatch column creation request to Apps Script
+    if (typeof sendRequest === "function") {
+      await sendRequest({ action: "createColumn", dateStr: dateStr });
+    }
 
     if (errorDiv) errorDiv.innerText = "";
     showDashboard();
@@ -64,23 +74,31 @@ async function verifyAndStartClass() {
   }
 }
 
-// Validates password only (for marking absentees prompt)
+/**
+ * Validates password only (used for the "Mark Absentees" admin prompt)
+ */
 function validatePasswordOnly(adminID, pass) {
   if (!adminID || !pass) return false;
   return AUTHORIZED_ADMINS[adminID.toLowerCase()] === pass.trim();
 }
 
+/**
+ * Checks session storage on page load/refresh
+ */
 function checkAdminSession() {
   const isLoggedIn = sessionStorage.getItem("adminLoggedIn") === "true";
   if (isLoggedIn) {
     window.activeDate = sessionStorage.getItem("activeDate") || "";
-    window.activeCourse = sessionStorage.getItem("activeCourse") || "OS Lab";
+    window.activeCourse = sessionStorage.getItem("activeCourse") || "Attendance";
     showDashboard();
   } else {
     hideDashboard();
   }
 }
 
+/**
+ * Unlocks the main scanning dashboard and updates session details
+ */
 function showDashboard() {
   const loginCard = document.getElementById("loginCard");
   const mainDashboard = document.getElementById("mainDashboard");
@@ -96,10 +114,13 @@ function showDashboard() {
   }
 
   if (sessionInfo) {
-    sessionInfo.innerText = `Course: ${window.activeCourse} | Date: ${window.activeDate}`;
+    sessionInfo.innerText = `Course: ${window.activeCourse || 'Attendance'} | Date: ${window.activeDate}`;
   }
 }
 
+/**
+ * Hides main station UI and presents the login card
+ */
 function hideDashboard() {
   const loginCard = document.getElementById("loginCard");
   const mainDashboard = document.getElementById("mainDashboard");
@@ -108,6 +129,9 @@ function hideDashboard() {
   if (mainDashboard) mainDashboard.style.display = "none";
 }
 
+/**
+ * Clears session tokens and logs out the current admin
+ */
 function logoutAdmin() {
   sessionStorage.removeItem("adminLoggedIn");
   sessionStorage.removeItem("activeAdminID");

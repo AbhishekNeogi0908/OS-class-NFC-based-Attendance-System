@@ -27,8 +27,8 @@
 
     <label for="courseSelect">Select Course:</label>
     <select id="courseSelect">
-      <option value="OS Lab">OS Lab Attendance</option>
-      <option value="OS Theory">OS Theory Attendance</option>
+      <option value="OS_lab_att">OS Lab Attendance</option>
+      <option value="OS_theory_att">OS Theory Attendance</option>
     </select>
 
     <label for="dateInput">Class Date:</label>
@@ -42,7 +42,7 @@
     <div id="loginError" style="color: red; margin-top: 10px; font-weight: bold;"></div>
   </div>
 
-  <!-- 2. MAIN SCANNING DASHBOARD (Unlocked after successful admin login) -->
+  <!-- 2. MAIN SCANNING DASHBOARD -->
   <div id="mainDashboard" style="display: none;">
     <div style="text-align: right; margin-bottom: 10px; max-width: 400px; margin-left: auto; margin-right: auto;">
       <span class="admin-badge" id="adminBadge">👤 Admin Active</span>
@@ -51,7 +51,7 @@
 
     <div class="card" id="scanSection">
       <h2>📡 NFC Attendance Scanner</h2>
-      <div id="sessionInfo" style="font-size: 14px; color: #555; margin-bottom: 10px;"></div>
+      <div id="sessionInfo" style="font-size: 14px; color: #555; margin-bottom: 10px; font-weight: bold;"></div>
       
       <button class="btn-primary" id="nfcBtn" onclick="initNFC()">📡 Tap ID Cards to Scan</button>
       <div class="status" id="statusMsg">Ready to scan...</div>
@@ -66,9 +66,8 @@
     const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec";
 
     var activeDate = "";
-    var activeCourse = "";
+    var activeCourse = "OS_lab_att";
 
-    // Multi-fallback request engine for mobile browsers
     function sendRequest(params) {
       return new Promise((resolve) => {
         const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
@@ -84,7 +83,7 @@
         };
 
         params.callback = callbackName;
-        params.sheetName = activeCourse; // Pass selected course sheet name
+        params.sheetName = activeCourse || "OS_lab_att";
         params._nc = Date.now();
         const query = new URLSearchParams(params).toString();
         const fullUrl = `${API_URL}?${query}`;
@@ -124,7 +123,7 @@
 
     async function initNFC() {
       if (!('NDEFReader' in window)) {
-        alert("Web NFC is supported natively in Edge or Chrome on Android!");
+        alert("Web NFC is only supported on mobile browsers (Chrome/Edge on Android).\nOn PC, you can test UI controls.");
         return;
       }
 
@@ -144,7 +143,7 @@
           
           document.getElementById('statusMsg').innerText = `✅ Attendance Sent for UID: ${serialNumber}`;
           document.getElementById('statusMsg').style.color = "green";
-          logToBox(`--> Attendance "P" updated in Sheet for: ${serialNumber}`);
+          logToBox(`--> Attendance "P" updated in Sheet (${activeCourse}) for: ${serialNumber}`);
         });
 
       } catch (error) {
@@ -152,17 +151,16 @@
       }
     }
 
-    // Require password re-verification to end class
     async function finishClassWithAuth() {
       const activeAdminID = sessionStorage.getItem("activeAdminID");
       const enteredPass = prompt(`Admin Confirmation Required (${activeAdminID}):\nPlease enter your password to mark absentees ("A") and end class:`);
 
-      if (enteredPass === null) return; // User cancelled prompt
+      if (enteredPass === null) return;
 
-      if (validatePasswordOnly(activeAdminID, enteredPass)) {
+      if (typeof validatePasswordOnly === "function" && validatePasswordOnly(activeAdminID, enteredPass)) {
         document.getElementById('statusMsg').innerText = "Marking absentees...";
         await sendRequest({ action: "markAbsentees", dateStr: activeDate });
-        alert(`Absentees marked for ${activeDate} (${activeCourse})! Class session ended.`);
+        alert(`Absentees marked for ${activeDate} in "${activeCourse}" tab! Class session ended.`);
         logoutAdmin();
       } else {
         alert("❌ Incorrect Password! Cannot end class session.");
