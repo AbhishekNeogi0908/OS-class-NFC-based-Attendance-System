@@ -23,12 +23,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
 async function verifyAndStartClass() {
   const adminIDInput = document.getElementById("adminID");
+  const adminPassInput = document.getElementById("adminPasscode");
   const dateInput = document.getElementById("dateInput");
   const courseSelect = document.getElementById("courseSelect");
   const errorDiv = document.getElementById("loginError");
 
-  const pass = typeof getRealPassword === "function" ? getRealPassword("adminPasscode") : "";
   const adminID = adminIDInput ? adminIDInput.value.trim().toLowerCase() : "";
+  const pass = adminPassInput ? adminPassInput.value.trim() : "";
   const dateStr = dateInput ? dateInput.value.trim() : "";
   const selectedCourse = courseSelect ? courseSelect.value : "OS_lab_att";
 
@@ -37,6 +38,7 @@ async function verifyAndStartClass() {
     return;
   }
 
+  // Validate credentials directly
   if (AUTHORIZED_ADMINS[adminID] && AUTHORIZED_ADMINS[adminID] === pass) {
     sessionStorage.setItem("adminLoggedIn", "true");
     sessionStorage.setItem("activeAdminID", adminID);
@@ -48,7 +50,6 @@ async function verifyAndStartClass() {
     window.activeDate = dateStr;
     window.activeCourse = selectedCourse;
 
-    // Trigger Blur Loading Overlay for Start Class
     if (typeof showLoading === "function") {
       showLoading("Creating Column & Preparing Scanner...");
     }
@@ -71,9 +72,10 @@ async function verifyAndStartClass() {
 
 function openEndClassModal() {
   const modal = document.getElementById("endClassModal");
+  const passInput = document.getElementById("endClassPasscode");
   const errDiv = document.getElementById("modalError");
 
-  if (typeof clearRealPassword === "function") clearRealPassword("endClassPasscode");
+  if (passInput) passInput.value = "";
   if (errDiv) errDiv.innerText = "";
   if (modal) modal.style.display = "flex";
 }
@@ -85,13 +87,14 @@ function closeEndClassModal() {
 
 async function confirmAndEndClass() {
   const activeAdminID = sessionStorage.getItem("activeAdminID");
+  const passInput = document.getElementById("endClassPasscode");
   const errDiv = document.getElementById("modalError");
-  const enteredPass = typeof getRealPassword === "function" ? getRealPassword("endClassPasscode") : "";
+
+  const enteredPass = passInput ? passInput.value.trim() : "";
 
   if (AUTHORIZED_ADMINS[activeAdminID.toLowerCase()] === enteredPass) {
     closeEndClassModal();
 
-    // Trigger Blur Loading Overlay for Ending Class
     if (typeof showLoading === "function") {
       showLoading("Marking Absentees (\"A\") & Ending Session...");
     }
@@ -155,8 +158,10 @@ function logoutAdmin() {
   sessionStorage.removeItem("activeDate");
   sessionStorage.removeItem("activeCourse");
 
-  if (typeof clearRealPassword === "function") clearRealPassword("adminPasscode");
+  const passInput = document.getElementById("adminPasscode");
   const errorDiv = document.getElementById("loginError");
+
+  if (passInput) passInput.value = "";
   if (errorDiv) errorDiv.innerText = "";
 
   hideDashboard();
