@@ -2,11 +2,12 @@
  * Admin Authentication & Session Management Module
  */
 
-const AUTHORIZED_ADMINS = {
-  "abhishek": "iitg2026",
-  "pankaj": "nfc2026",
-  "admin": "pass1234"
-};
+// Authorized Admins Array (Direct, clean string matching)
+const AUTHORIZED_ADMINS = [
+  { id: "abhishek", pass: "iitg2026" },
+  { id: "pankaj", pass: "nfc2026" },
+  { id: "admin", pass: "pass1234" }
+];
 
 document.addEventListener("DOMContentLoaded", function () {
   const dateInput = document.getElementById("dateInput");
@@ -28,20 +29,30 @@ async function verifyAndStartClass() {
   const courseSelect = document.getElementById("courseSelect");
   const errorDiv = document.getElementById("loginError");
 
-  const adminID = adminIDInput ? adminIDInput.value.trim().toLowerCase() : "";
-  const pass = adminPassInput ? adminPassInput.value.trim() : "";
+  // Read clean trimmed values
+  const inputID = adminIDInput ? adminIDInput.value.trim().toLowerCase() : "";
+  const inputPass = adminPassInput ? adminPassInput.value.trim() : "";
   const dateStr = dateInput ? dateInput.value.trim() : "";
   const selectedCourse = courseSelect ? courseSelect.value : "OS_lab_att";
+
+  if (!inputID || !inputPass) {
+    if (errorDiv) errorDiv.innerText = "❌ Please enter both Admin ID and Password!";
+    return;
+  }
 
   if (!dateStr) {
     if (errorDiv) errorDiv.innerText = "❌ Please enter a valid class date!";
     return;
   }
 
-  // Direct Credential Check
-  if (AUTHORIZED_ADMINS[adminID] && AUTHORIZED_ADMINS[adminID] === pass) {
+  // Validate credentials against array
+  const isValidAdmin = AUTHORIZED_ADMINS.some(admin => 
+    admin.id.toLowerCase() === inputID && admin.pass === inputPass
+  );
+
+  if (isValidAdmin) {
     sessionStorage.setItem("adminLoggedIn", "true");
-    sessionStorage.setItem("activeAdminID", adminID);
+    sessionStorage.setItem("activeAdminID", inputID);
     sessionStorage.setItem("activeDate", dateStr);
     sessionStorage.setItem("activeCourse", selectedCourse);
 
@@ -86,13 +97,18 @@ function closeEndClassModal() {
 }
 
 async function confirmAndEndClass() {
-  const activeAdminID = sessionStorage.getItem("activeAdminID");
+  const activeAdminID = (sessionStorage.getItem("activeAdminID") || "").toLowerCase();
   const passInput = document.getElementById("endClassPasscode");
   const errDiv = document.getElementById("modalError");
 
   const enteredPass = passInput ? passInput.value.trim() : "";
 
-  if (AUTHORIZED_ADMINS[activeAdminID.toLowerCase()] === enteredPass) {
+  // Validate end class password
+  const isValidAdmin = AUTHORIZED_ADMINS.some(admin => 
+    admin.id.toLowerCase() === activeAdminID && admin.pass === enteredPass
+  );
+
+  if (isValidAdmin) {
     closeEndClassModal();
 
     if (typeof showLoading === "function") {
@@ -118,7 +134,7 @@ function checkAdminSession() {
   const isLoggedIn = sessionStorage.getItem("adminLoggedIn") === "true";
   if (isLoggedIn) {
     window.activeDate = sessionStorage.getItem("activeDate") || "";
-    window.activeCourse = sessionStorage.getItem("activeCourse") || "Attendance";
+    window.activeCourse = sessionStorage.getItem("activeCourse") || "OS_lab_att";
     showDashboard();
   } else {
     hideDashboard();
@@ -140,7 +156,7 @@ function showDashboard() {
   }
 
   if (sessionInfo) {
-    sessionInfo.innerText = `Course: ${window.activeCourse || 'Attendance'} | Date: ${window.activeDate}`;
+    sessionInfo.innerText = `Course: ${window.activeCourse || 'OS_lab_att'} | Date: ${window.activeDate}`;
   }
 }
 
