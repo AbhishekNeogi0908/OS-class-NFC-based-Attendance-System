@@ -27,7 +27,6 @@ async function verifyAndStartClass() {
   const courseSelect = document.getElementById("courseSelect");
   const errorDiv = document.getElementById("loginError");
 
-  // Fetch the real unmasked password string from helper
   const pass = typeof getRealPassword === "function" ? getRealPassword("adminPasscode") : "";
   const adminID = adminIDInput ? adminIDInput.value.trim().toLowerCase() : "";
   const dateStr = dateInput ? dateInput.value.trim() : "";
@@ -44,16 +43,24 @@ async function verifyAndStartClass() {
     sessionStorage.setItem("activeDate", dateStr);
     sessionStorage.setItem("activeCourse", selectedCourse);
 
-    if (errorDiv) errorDiv.innerText = "Creating column in Sheet...";
+    if (errorDiv) errorDiv.innerText = "";
 
     window.activeDate = dateStr;
     window.activeCourse = selectedCourse;
 
-    if (typeof sendRequest === "function") {
-      await sendRequest({ action: "createColumn", dateStr: dateStr });
+    // Trigger Blur Loading Overlay for Start Class
+    if (typeof showLoading === "function") {
+      showLoading("Creating Column & Preparing Scanner...");
     }
 
-    if (errorDiv) errorDiv.innerText = "";
+    try {
+      if (typeof sendRequest === "function") {
+        await sendRequest({ action: "createColumn", dateStr: dateStr });
+      }
+    } finally {
+      if (typeof hideLoading === "function") hideLoading();
+    }
+
     showDashboard();
   } else {
     if (errorDiv) {
@@ -83,8 +90,20 @@ async function confirmAndEndClass() {
 
   if (AUTHORIZED_ADMINS[activeAdminID.toLowerCase()] === enteredPass) {
     closeEndClassModal();
-    document.getElementById('statusMsg').innerText = "Marking absentees...";
-    await sendRequest({ action: "markAbsentees", dateStr: activeDate });
+
+    // Trigger Blur Loading Overlay for Ending Class
+    if (typeof showLoading === "function") {
+      showLoading("Marking Absentees (\"A\") & Ending Session...");
+    }
+
+    try {
+      if (typeof sendRequest === "function") {
+        await sendRequest({ action: "markAbsentees", dateStr: activeDate });
+      }
+    } finally {
+      if (typeof hideLoading === "function") hideLoading();
+    }
+
     alert(`Absentees marked for ${activeDate} in "${activeCourse}" tab! Class session ended.`);
     logoutAdmin();
   } else {
