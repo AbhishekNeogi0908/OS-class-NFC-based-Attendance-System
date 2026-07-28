@@ -38,7 +38,7 @@ async function verifyAndStartClass() {
     return;
   }
 
-  // Validate credentials directly
+  // Direct Credential Check
   if (AUTHORIZED_ADMINS[adminID] && AUTHORIZED_ADMINS[adminID] === pass) {
     sessionStorage.setItem("adminLoggedIn", "true");
     sessionStorage.setItem("activeAdminID", adminID);
