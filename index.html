@@ -22,8 +22,8 @@
     <input type="text" id="dateInput" style="padding: 8px; font-size: 16px; width: 60%; text-align: center;" />
     <button class="btn-primary" id="startBtn" onclick="startClass()">Start Class (Create Column)</button>
     
-    <!-- DIRECT LINK TO VIEW GOOGLE SHEET -->
-    <a href="https://docs.google.com/spreadsheets" target="_blank" class="btn-success">📊 Open Attendance Google Sheet</a>
+    <!-- LINK TO OPEN SPREADSHEET DIRECTLY -->
+    <a href="https://docs.google.com/spreadsheets" target="_blank" class="btn-success">📊 Open Google Sheet</a>
     
     <div id="initStatus" style="margin-top:10px; color:#555;"></div>
   </div>
@@ -38,7 +38,7 @@
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec";
 
-    // Set today's date in DD/MM/YY format
+    // Pre-fill today's date (DD/MM/YY)
     var today = new Date();
     var dd = String(today.getDate()).padStart(2, '0');
     var mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -47,7 +47,6 @@
 
     var activeDate = "";
 
-    // Reliable JSONP Loader (Works cross-origin on mobile and desktop)
     function sendRequest(params) {
       return new Promise((resolve, reject) => {
         const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
@@ -66,7 +65,7 @@
         script.onerror = function() {
           delete window[callbackName];
           if (document.body.contains(script)) document.body.removeChild(script);
-          reject(new Error("Request failed to reach Google Sheet API"));
+          reject(new Error("Request failed"));
         };
 
         document.body.appendChild(script);
@@ -75,7 +74,7 @@
 
     async function startClass() {
       activeDate = document.getElementById('dateInput').value.trim();
-      if (!activeDate) return alert("Please enter a valid date");
+      if (!activeDate) return alert("Enter valid date");
       
       var status = document.getElementById('initStatus');
       status.innerText = "Creating column in Sheet...";
@@ -84,7 +83,7 @@
         const res = await sendRequest({ action: "createColumn", dateStr: activeDate });
         document.getElementById('scanSection').style.display = 'block';
         document.getElementById('statusMsg').innerText = `Class active for ${activeDate}! Start scanning.`;
-        status.innerText = res.status === "EXISTS" ? "Column already exists!" : "New column created in Sheet!";
+        status.innerText = (res && res.status === "EXISTS") ? "Column already exists." : "New column created in Sheet!";
       } catch (e) {
         alert("API Error: " + e.message);
       }
@@ -107,7 +106,7 @@
           
           try {
             const res = await sendRequest({ action: "markPresent", uid: serialNumber, dateStr: activeDate });
-            if (res.status === "SUCCESS") {
+            if (res && res.status === "SUCCESS") {
               document.getElementById('statusMsg').innerText = `✅ Marked Present: ${res.name || serialNumber}`;
               document.getElementById('statusMsg').style.color = "green";
               logToBox(`--> Marked "P" for: ${res.roll || ''} ${res.name || serialNumber}`);
@@ -122,7 +121,7 @@
         });
 
       } catch (error) {
-        alert("NFC Initialization Error: " + error);
+        alert("NFC Error: " + error);
       }
     }
 
