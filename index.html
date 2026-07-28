@@ -45,19 +45,36 @@
     // Ensure API_URL ends with /exec
     const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec"; // Make sure this ends in /exec
 
+const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec";
+
 async function sendRequest(params) {
-  // Convert JS object into URL Query Parameters (e.g., ?action=createColumn&dateStr=28/07/26)
   const query = new URLSearchParams(params).toString();
   const fullUrl = `${API_URL}?${query}`;
 
-  const response = await fetch(fullUrl, {
-    method: "GET",
-    redirect: "follow"
-  });
+  console.log("Sending request to:", fullUrl);
 
-  return await response.json();
+  try {
+    const response = await fetch(fullUrl, {
+      method: "GET",
+      redirect: "follow"
+    });
+
+    console.log("Response status:", response.status);
+
+    if (!response.ok) {
+      throw new Error(`HTTP Status ${response.status}: ${response.statusText}`);
+    }
+
+    const text = await response.text();
+    console.log("Raw response body:", text);
+
+    return JSON.parse(text);
+
+  } catch (err) {
+    console.error("Fetch Details Error:", err);
+    throw new Error(`${err.name}: ${err.message}`);
+  }
 }
-
     async function startClass() {
       activeDate = document.getElementById('dateInput').value.trim();
       if (!activeDate) return alert("Enter date");
