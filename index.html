@@ -32,7 +32,7 @@
 
   <script>
     // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
-    const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec";
+    // const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec";
 
     var today = new Date();
     var dd = String(today.getDate()).padStart(2, '0');
@@ -42,13 +42,21 @@
 
     var activeDate = "";
 
-    async function sendRequest(payload) {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-      return await response.json();
-    }
+    // Ensure API_URL ends with /exec
+    const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec"; // Make sure this ends in /exec
+
+async function sendRequest(params) {
+  // Convert object payload to URL parameters
+  const query = new URLSearchParams(params).toString();
+  const fullUrl = `${API_URL}?${query}`;
+
+  const response = await fetch(fullUrl, {
+    method: "GET",
+    redirect: "follow"
+  });
+  
+  return await response.json();
+}
 
     async function startClass() {
       activeDate = document.getElementById('dateInput').value.trim();
