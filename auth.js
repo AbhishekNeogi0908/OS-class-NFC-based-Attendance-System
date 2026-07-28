@@ -23,16 +23,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
 async function verifyAndStartClass() {
   const adminIDInput = document.getElementById("adminID");
-  const adminPassInput = document.getElementById("adminPasscode");
   const dateInput = document.getElementById("dateInput");
   const courseSelect = document.getElementById("courseSelect");
   const errorDiv = document.getElementById("loginError");
 
-  if (!adminIDInput || !adminPassInput || !dateInput) return;
-
-  const adminID = adminIDInput.value.trim().toLowerCase();
-  const pass = adminPassInput.value.trim();
-  const dateStr = dateInput.value.trim();
+  // Fetch the real unmasked password string from helper
+  const pass = typeof getRealPassword === "function" ? getRealPassword("adminPasscode") : "";
+  const adminID = adminIDInput ? adminIDInput.value.trim().toLowerCase() : "";
+  const dateStr = dateInput ? dateInput.value.trim() : "";
   const selectedCourse = courseSelect ? courseSelect.value : "OS_lab_att";
 
   if (!dateStr) {
@@ -64,31 +62,24 @@ async function verifyAndStartClass() {
   }
 }
 
-// Open custom masked password modal
 function openEndClassModal() {
   const modal = document.getElementById("endClassModal");
-  const passInput = document.getElementById("endClassPasscode");
   const errDiv = document.getElementById("modalError");
 
-  if (passInput) passInput.value = "";
+  if (typeof clearRealPassword === "function") clearRealPassword("endClassPasscode");
   if (errDiv) errDiv.innerText = "";
   if (modal) modal.style.display = "flex";
 }
 
-// Close password modal
 function closeEndClassModal() {
   const modal = document.getElementById("endClassModal");
   if (modal) modal.style.display = "none";
 }
 
-// Confirm masked password & mark absentees
 async function confirmAndEndClass() {
   const activeAdminID = sessionStorage.getItem("activeAdminID");
-  const passInput = document.getElementById("endClassPasscode");
   const errDiv = document.getElementById("modalError");
-
-  if (!passInput) return;
-  const enteredPass = passInput.value.trim();
+  const enteredPass = typeof getRealPassword === "function" ? getRealPassword("endClassPasscode") : "";
 
   if (AUTHORIZED_ADMINS[activeAdminID.toLowerCase()] === enteredPass) {
     closeEndClassModal();
@@ -145,10 +136,8 @@ function logoutAdmin() {
   sessionStorage.removeItem("activeDate");
   sessionStorage.removeItem("activeCourse");
 
-  const passInput = document.getElementById("adminPasscode");
+  if (typeof clearRealPassword === "function") clearRealPassword("adminPasscode");
   const errorDiv = document.getElementById("loginError");
-
-  if (passInput) passInput.value = "";
   if (errorDiv) errorDiv.innerText = "";
 
   hideDashboard();
