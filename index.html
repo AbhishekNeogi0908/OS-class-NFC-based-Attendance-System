@@ -8,74 +8,72 @@
     body { font-family: Arial, sans-serif; padding: 15px; text-align: center; background: #f4f6f9; }
     .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 15px; max-width: 400px; margin-left: auto; margin-right: auto; }
     button { width: 100%; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 8px; border: none; margin-top: 10px; cursor: pointer; }
-    input[type="text"], input[type="password"] { padding: 10px; font-size: 16px; width: 80%; text-align: center; border: 1px solid #ccc; border-radius: 6px; margin-top: 8px; }
+    input[type="text"], input[type="password"], select { padding: 10px; font-size: 16px; width: 85%; text-align: center; border: 1px solid #ccc; border-radius: 6px; margin-top: 8px; box-sizing: border-box; }
     .btn-primary { background: #007bff; color: white; }
-    .btn-success { background: #28a745; color: white; text-decoration: none; display: block; padding: 12px; border-radius: 8px; font-weight: bold; margin-top: 10px; box-sizing: border-box; }
     .btn-danger { background: #dc3545; color: white; }
     .btn-secondary { background: #6c757d; color: white; margin-top: 10px; }
     .status { margin-top: 15px; font-size: 18px; font-weight: bold; min-height: 40px; }
     .log-box { background: #222; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; height: 180px; overflow-y: auto; text-align: left; }
     .admin-badge { background: #e2e3e5; color: #383d41; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; display: inline-block; margin-bottom: 10px; }
+    label { font-weight: bold; display: block; margin-top: 10px; text-align: left; margin-left: 7.5%; }
   </style>
 </head>
 <body>
 
-  <!-- 1. ADMIN LOGIN CONTAINER (Shown by default) -->
+  <!-- 1. ADMIN LOGIN & CLASS INITIALIZATION CARD -->
   <div class="card" id="loginCard">
     <h2>🔒 Admin Authentication</h2>
-    <p style="color: #666; font-size: 14px;">Enter Admin Credentials</p>
-    <input type="text" id="adminID" placeholder="Admin ID" /><br>
-    <input type="password" id="adminPasscode" placeholder="Password" /><br>
-    <button class="btn-primary" onclick="verifyAdmin()">Login</button>
+    <p style="color: #666; font-size: 14px;">Setup Class & Login</p>
+
+    <label for="courseSelect">Select Course:</label>
+    <select id="courseSelect">
+      <option value="OS Lab">OS Lab Attendance</option>
+      <option value="OS Theory">OS Theory Attendance</option>
+    </select>
+
+    <label for="dateInput">Class Date:</label>
+    <input type="text" id="dateInput" placeholder="DD/MM/YY" />
+
+    <label for="adminID">Admin Credentials:</label>
+    <input type="text" id="adminID" placeholder="Admin ID" />
+    <input type="password" id="adminPasscode" placeholder="Password" />
+
+    <button class="btn-primary" onclick="verifyAndStartClass()">Start Class & Go to Scanner</button>
     <div id="loginError" style="color: red; margin-top: 10px; font-weight: bold;"></div>
   </div>
 
-  <!-- 2. MAIN DASHBOARD CONTAINER (Hidden by auth.js until login) -->
+  <!-- 2. MAIN SCANNING DASHBOARD (Unlocked after successful admin login) -->
   <div id="mainDashboard" style="display: none;">
     <div style="text-align: right; margin-bottom: 10px; max-width: 400px; margin-left: auto; margin-right: auto;">
       <span class="admin-badge" id="adminBadge">👤 Admin Active</span>
-      <button onclick="logoutAdmin()" class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 12px; display: inline-block; margin: 0 0 0 10px;">🔒 Logout</button>
+      <button onclick="logoutAdmin()" class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 12px; display: inline-block; margin: 0 0 0 10px;">🔒 Exit</button>
     </div>
 
-    <div class="card">
-      <h2>NFC Attendance Station</h2>
-      <label><b>Class Date:</b></label>
-      <input type="text" id="dateInput" style="padding: 8px; font-size: 16px; width: 60%; text-align: center;" />
-      <button class="btn-primary" id="startBtn" onclick="startClass()">Start Class (Create Column)</button>
+    <div class="card" id="scanSection">
+      <h2>📡 NFC Attendance Scanner</h2>
+      <div id="sessionInfo" style="font-size: 14px; color: #555; margin-bottom: 10px;"></div>
       
-      <!-- Direct link to open your Google Sheets dashboard -->
-      <a href="https://docs.google.com/spreadsheets" target="_blank" class="btn-success">📊 Open Google Sheets App</a>
-      
-      <div id="initStatus" style="margin-top:10px; color:#555;"></div>
-    </div>
-
-    <div class="card" id="scanSection" style="display:none;">
       <button class="btn-primary" id="nfcBtn" onclick="initNFC()">📡 Tap ID Cards to Scan</button>
       <div class="status" id="statusMsg">Ready to scan...</div>
       <div class="log-box" id="logBox">-- Live Scan Log --<br></div>
-      <button class="btn-danger" onclick="finishClass()" style="margin-top: 20px;">Mark Absentees ("A") & End Class</button>
+      
+      <button class="btn-danger" onclick="finishClassWithAuth()" style="margin-top: 20px;">Mark Absentees ("A") & End Class</button>
     </div>
   </div>
 
+  <!-- MAIN APP LOGIC -->
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec";
 
-    // Pre-fill today's date in DD/MM/YY format
-    var today = new Date();
-    var dd = String(today.getDate()).padStart(2, '0');
-    var mm = String(today.getMonth() + 1).padStart(2, '0');
-    var yy = String(today.getFullYear()).slice(-2);
-    document.getElementById('dateInput').value = `${dd}/${mm}/${yy}`;
-
     var activeDate = "";
+    var activeCourse = "";
 
-    // Multi-fallback request engine designed specifically for mobile browsers
+    // Multi-fallback request engine for mobile browsers
     function sendRequest(params) {
       return new Promise((resolve) => {
         const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
         var resolved = false;
 
-        // Mode 1: Attempt JSONP
         window[callbackName] = function(data) {
           if (!resolved) {
             resolved = true;
@@ -86,21 +84,19 @@
         };
 
         params.callback = callbackName;
-        params._nc = Date.now(); // Cache-busting parameter for phone Chrome
+        params.sheetName = activeCourse; // Pass selected course sheet name
+        params._nc = Date.now();
         const query = new URLSearchParams(params).toString();
         const fullUrl = `${API_URL}?${query}`;
 
         const script = document.createElement('script');
         script.src = fullUrl;
 
-        // Mode 2: If JSONP fails on mobile network, fallback to Image Ping (bypasses CORS 100%)
         script.onerror = function() {
           if (!resolved) {
-            console.log("JSONP blocked by mobile browser. Dispatching via Image Beacon...");
             delete window[callbackName];
             if (document.body.contains(script)) document.body.removeChild(script);
 
-            // Image Ping forces the browser to send GET request to Apps Script regardless of CORS
             const img = new Image();
             img.src = fullUrl;
             
@@ -115,7 +111,6 @@
 
         document.body.appendChild(script);
 
-        // Safety timeout so UI never hangs
         setTimeout(() => {
           if (!resolved) {
             resolved = true;
@@ -125,21 +120,6 @@
           }
         }, 3000);
       });
-    }
-
-    async function startClass() {
-      activeDate = document.getElementById('dateInput').value.trim();
-      if (!activeDate) return alert("Please enter a valid date");
-      
-      var status = document.getElementById('initStatus');
-      status.innerText = "Creating column in Sheet...";
-
-      const res = await sendRequest({ action: "createColumn", dateStr: activeDate });
-      
-      // Always unhide scan section and allow user to proceed
-      document.getElementById('scanSection').style.display = 'block';
-      document.getElementById('statusMsg').innerText = `Class active for ${activeDate}! Start scanning.`;
-      status.innerText = "Column created / active in Google Sheet!";
     }
 
     async function initNFC() {
@@ -160,7 +140,7 @@
           document.getElementById('statusMsg').innerText = `⏳ Processing UID: ${serialNumber}...`;
           document.getElementById('statusMsg').style.color = "#007bff";
 
-          const res = await sendRequest({ action: "markPresent", uid: serialNumber, dateStr: activeDate });
+          await sendRequest({ action: "markPresent", uid: serialNumber, dateStr: activeDate });
           
           document.getElementById('statusMsg').innerText = `✅ Attendance Sent for UID: ${serialNumber}`;
           document.getElementById('statusMsg').style.color = "green";
@@ -172,13 +152,21 @@
       }
     }
 
-    async function finishClass() {
-      if (!confirm(`Mark all remaining empty cells for ${activeDate} as "A"?`)) return;
+    // Require password re-verification to end class
+    async function finishClassWithAuth() {
+      const activeAdminID = sessionStorage.getItem("activeAdminID");
+      const enteredPass = prompt(`Admin Confirmation Required (${activeAdminID}):\nPlease enter your password to mark absentees ("A") and end class:`);
 
-      document.getElementById('statusMsg').innerText = "Marking absentees...";
-      await sendRequest({ action: "markAbsentees", dateStr: activeDate });
-      alert(`Absentees request sent for ${activeDate}! Check your Google Sheet.`);
-      document.getElementById('statusMsg').innerText = "Class ended.";
+      if (enteredPass === null) return; // User cancelled prompt
+
+      if (validatePasswordOnly(activeAdminID, enteredPass)) {
+        document.getElementById('statusMsg').innerText = "Marking absentees...";
+        await sendRequest({ action: "markAbsentees", dateStr: activeDate });
+        alert(`Absentees marked for ${activeDate} (${activeCourse})! Class session ended.`);
+        logoutAdmin();
+      } else {
+        alert("❌ Incorrect Password! Cannot end class session.");
+      }
     }
 
     function logToBox(msg) {
