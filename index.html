@@ -31,9 +31,10 @@
   </div>
 
   <script>
-    // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE:
-    // const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec";
+    // Single global definition of API_URL
+    const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec";
 
+    // Set today's date in DD/MM/YY format
     var today = new Date();
     var dd = String(today.getDate()).padStart(2, '0');
     var mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -42,35 +43,32 @@
 
     var activeDate = "";
 
-    // Ensure API_URL ends with /exec
-const API_URL = "https://script.google.com/macros/s/AKfycbzBer4WPhMImkWOLsNmpA0YYfs_47loR9MLhpePRmzjDkyt3XDGWjyIkQaSlp39ahLS/exec";
+    // JSONP Network Request (bypasses CORS restrictions)
+    function sendRequest(params) {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
 
-function sendRequest(params) {
-  return new Promise((resolve, reject) => {
-    // Generate unique callback function name
-    const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
+        window[callbackName] = function(data) {
+          delete window[callbackName];
+          document.body.removeChild(script);
+          resolve(data);
+        };
 
-    // Attach callback to window
-    window[callbackName] = function(data) {
-      delete window[callbackName];
-      document.body.removeChild(script);
-      resolve(data);
-    };
+        params.callback = callbackName;
+        const query = new URLSearchParams(params).toString();
+        const script = document.createElement('script');
+        
+        script.src = `${API_URL}?${query}`;
+        script.onerror = function() {
+          delete window[callbackName];
+          if (document.body.contains(script)) document.body.removeChild(script);
+          reject(new Error("JSONP Request Failed"));
+        };
 
-    params.callback = callbackName;
-    const query = new URLSearchParams(params).toString();
-    const script = document.createElement('script');
-    
-    script.src = `${API_URL}?${query}`;
-    script.onerror = function() {
-      delete window[callbackName];
-      document.body.removeChild(script);
-      reject(new Error("JSONP request failed"));
-    };
+        document.body.appendChild(script);
+      });
+    }
 
-    document.body.appendChild(script);
-  });
-}
     async function startClass() {
       activeDate = document.getElementById('dateInput').value.trim();
       if (!activeDate) return alert("Enter date");
@@ -96,7 +94,7 @@ function sendRequest(params) {
 
       try {
         const ndef = new NDEFReader();
-        await ndef.scan(); // This works now because the page is loaded at top-level!
+        await ndef.scan();
         document.getElementById('nfcBtn').innerText = "🟢 Scanning Active...";
         document.getElementById('nfcBtn').style.background = "#28a745";
 
