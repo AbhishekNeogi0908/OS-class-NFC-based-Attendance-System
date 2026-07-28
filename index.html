@@ -6,34 +6,55 @@
   <title>NFC Attendance Station</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 15px; text-align: center; background: #f4f6f9; }
-    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 15px; }
+    .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 15px; max-width: 400px; margin-left: auto; margin-right: auto; }
     button { width: 100%; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 8px; border: none; margin-top: 10px; cursor: pointer; }
+    input[type="text"], input[type="password"] { padding: 10px; font-size: 16px; width: 80%; text-align: center; border: 1px solid #ccc; border-radius: 6px; margin-top: 8px; }
     .btn-primary { background: #007bff; color: white; }
-    .btn-success { background: #28a745; color: white; text-decoration: none; display: block; padding: 12px; border-radius: 8px; font-weight: bold; margin-top: 10px; }
+    .btn-success { background: #28a745; color: white; text-decoration: none; display: block; padding: 12px; border-radius: 8px; font-weight: bold; margin-top: 10px; box-sizing: border-box; }
     .btn-danger { background: #dc3545; color: white; }
+    .btn-secondary { background: #6c757d; color: white; margin-top: 10px; }
     .status { margin-top: 15px; font-size: 18px; font-weight: bold; min-height: 40px; }
     .log-box { background: #222; color: #00ff66; padding: 10px; border-radius: 8px; font-family: monospace; height: 180px; overflow-y: auto; text-align: left; }
+    .admin-badge { background: #e2e3e5; color: #383d41; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; display: inline-block; margin-bottom: 10px; }
   </style>
 </head>
 <body>
 
-  <div class="card">
-    <h2>NFC Attendance Station</h2>
-    <label><b>Class Date:</b></label>
-    <input type="text" id="dateInput" style="padding: 8px; font-size: 16px; width: 60%; text-align: center;" />
-    <button class="btn-primary" id="startBtn" onclick="startClass()">Start Class (Create Column)</button>
-    
-    <!-- Direct link to open your Google Sheets dashboard -->
-    <a href="https://docs.google.com/spreadsheets" target="_blank" class="btn-success">📊 Open Google Sheets App</a>
-    
-    <div id="initStatus" style="margin-top:10px; color:#555;"></div>
+  <!-- 1. ADMIN LOGIN CONTAINER (Shown by default) -->
+  <div class="card" id="loginCard">
+    <h2>🔒 Admin Authentication</h2>
+    <p style="color: #666; font-size: 14px;">Enter Admin Credentials</p>
+    <input type="text" id="adminID" placeholder="Admin ID" /><br>
+    <input type="password" id="adminPasscode" placeholder="Password" /><br>
+    <button class="btn-primary" onclick="verifyAdmin()">Login</button>
+    <div id="loginError" style="color: red; margin-top: 10px; font-weight: bold;"></div>
   </div>
 
-  <div class="card" id="scanSection" style="display:none;">
-    <button class="btn-primary" id="nfcBtn" onclick="initNFC()">📡 Tap ID Cards to Scan</button>
-    <div class="status" id="statusMsg">Ready to scan...</div>
-    <div class="log-box" id="logBox">-- Live Scan Log --<br></div>
-    <button class="btn-danger" onclick="finishClass()" style="margin-top: 20px;">Mark Absentees ("A") & End Class</button>
+  <!-- 2. MAIN DASHBOARD CONTAINER (Hidden by auth.js until login) -->
+  <div id="mainDashboard" style="display: none;">
+    <div style="text-align: right; margin-bottom: 10px; max-width: 400px; margin-left: auto; margin-right: auto;">
+      <span class="admin-badge" id="adminBadge">👤 Admin Active</span>
+      <button onclick="logoutAdmin()" class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 12px; display: inline-block; margin: 0 0 0 10px;">🔒 Logout</button>
+    </div>
+
+    <div class="card">
+      <h2>NFC Attendance Station</h2>
+      <label><b>Class Date:</b></label>
+      <input type="text" id="dateInput" style="padding: 8px; font-size: 16px; width: 60%; text-align: center;" />
+      <button class="btn-primary" id="startBtn" onclick="startClass()">Start Class (Create Column)</button>
+      
+      <!-- Direct link to open your Google Sheets dashboard -->
+      <a href="https://docs.google.com/spreadsheets" target="_blank" class="btn-success">📊 Open Google Sheets App</a>
+      
+      <div id="initStatus" style="margin-top:10px; color:#555;"></div>
+    </div>
+
+    <div class="card" id="scanSection" style="display:none;">
+      <button class="btn-primary" id="nfcBtn" onclick="initNFC()">📡 Tap ID Cards to Scan</button>
+      <div class="status" id="statusMsg">Ready to scan...</div>
+      <div class="log-box" id="logBox">-- Live Scan Log --<br></div>
+      <button class="btn-danger" onclick="finishClass()" style="margin-top: 20px;">Mark Absentees ("A") & End Class</button>
+    </div>
   </div>
 
   <script>
@@ -123,7 +144,7 @@
 
     async function initNFC() {
       if (!('NDEFReader' in window)) {
-        alert("Web NFC is only supported natively in Chrome on Android!");
+        alert("Web NFC is supported natively in Edge or Chrome on Android!");
         return;
       }
 
