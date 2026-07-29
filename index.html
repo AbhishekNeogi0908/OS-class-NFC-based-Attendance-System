@@ -11,8 +11,8 @@
     input[type="text"], input[type="password"], select { padding: 10px; font-size: 16px; width: 85%; text-align: center; border: 1px solid #ccc; border-radius: 6px; margin-top: 8px; box-sizing: border-box; }
     
     .pass-container { position: relative; width: 85%; margin: 8px auto 0 auto; }
-    .pass-container input { width: 100%; padding-right: 40px; margin-top: 0; }
-    .toggle-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; width: auto; padding: 0; margin: 0; cursor: pointer; font-size: 18px; }
+    .pass-container input { width: 100%; padding-right: 60px; margin-top: 0; }
+    .toggle-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; width: auto; padding: 4px 8px; margin: 0; cursor: pointer; font-size: 13px; font-weight: bold; color: #007bff; }
 
     .btn-primary { background: #007bff; color: white; }
     .btn-danger { background: #dc3545; color: white; }
@@ -46,10 +46,10 @@
     <label for="adminID">Admin Credentials:</label>
     <input type="text" id="adminID" placeholder="Admin ID" />
     
-    <!-- Password with Eye Toggle -->
+    <!-- Password with Professional Text Toggle -->
     <div class="pass-container">
       <input type="password" id="adminPasscode" placeholder="Password" />
-      <button type="button" class="toggle-btn" onclick="togglePassVisibility('adminPasscode', this)">👁️</button>
+      <button type="button" class="toggle-btn" onclick="togglePassVisibility('adminPasscode', this)">Show</button>
     </div>
 
     <button class="btn-primary" onclick="verifyAndStartClass()">Start Class & Go to Scanner</button>
@@ -98,18 +98,10 @@
       const input = document.getElementById(inputId);
       if (input.type === "password") {
         input.type = "text";
-<<<<<<< HEAD
-        btn.innerText = "🙈";
-      } else {
-        input.type = "password";
-        btn.innerText = "👁️";
-=======
         btn.innerText = "Hide";
-        
       } else {
         input.type = "password";
         btn.innerText = "Show";
->>>>>>> c770d9ee82d84ea53749e17bfd0f188e141682e6
       }
     }
   </script>
