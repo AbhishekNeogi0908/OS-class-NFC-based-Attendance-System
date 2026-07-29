@@ -83,7 +83,7 @@
       
       <div class="pass-container" style="width: 100%;">
         <input type="password" id="endClassPasscode" placeholder="Enter Password" />
-        <button type="button" class="toggle-btn" onclick="togglePassVisibility('endClassPasscode', this)">👁️</button>
+        <button type="button" class="toggle-btn" onclick="togglePassVisibility('endClassPasscode', this)">Show</button>
       </div>
 
       <div id="modalError" style="color: red; font-size: 13px; margin-top: 8px; font-weight: bold;"></div>
@@ -98,10 +98,18 @@
       const input = document.getElementById(inputId);
       if (input.type === "password") {
         input.type = "text";
+<<<<<<< HEAD
         btn.innerText = "🙈";
       } else {
         input.type = "password";
         btn.innerText = "👁️";
+=======
+        btn.innerText = "Hide";
+        
+      } else {
+        input.type = "password";
+        btn.innerText = "Show";
+>>>>>>> c770d9ee82d84ea53749e17bfd0f188e141682e6
       }
     }
   </script>
