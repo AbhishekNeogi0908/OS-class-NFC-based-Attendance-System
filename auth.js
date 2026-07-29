@@ -21,6 +21,24 @@ document.addEventListener("DOMContentLoaded", function () {
   checkAdminSession();
 });
 
+// Helper to check if entered DD/MM/YY date is strictly before today
+function isBackdate(dateStr) {
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) return false;
+
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  let year = parseInt(parts[2], 10);
+  if (year < 100) year += 2000;
+
+  const enteredDate = new Date(year, month, day);
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return enteredDate < today;
+}
+
 async function verifyAndStartClass() {
   const adminIDInput = document.getElementById("adminID");
   const adminPassInput = document.getElementById("adminPasscode");
@@ -35,6 +53,12 @@ async function verifyAndStartClass() {
 
   if (!dateStr) {
     if (errorDiv) errorDiv.innerText = "❌ Please enter a valid class date!";
+    return;
+  }
+
+  // Validate date is not before current date
+  if (isBackdate(dateStr)) {
+    if (errorDiv) errorDiv.innerText = "❌ Backdate attendance is invalid! Enter today's or a future date.";
     return;
   }
 
